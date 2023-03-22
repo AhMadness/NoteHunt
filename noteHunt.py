@@ -20,6 +20,7 @@ class NoteApp:
         
         # Set border color of notepad widget
         self.notes_text.configure(background='#1E1E1E')
+        
         # set the foreground color (i.e., text colorr) of the notes_text widget to green
         self.notes_text.config(fg="#E1E1E1")
     
