@@ -15,7 +15,7 @@ class NoteApp:
         toolbar_frame.pack(side=tk.TOP, fill=tk.X)
 
         # create text area for notes
-        self.notes_text = scrolledtext.ScrolledText(master, wrap=tk.WORD, width=50, height=10, font=("Montserrat", 12), borderwidth=0)
+        self.notes_text = scrolledtext.ScrolledText(master, wrap=tk.WORD, width=50, height=10, font=("Montserrat", 12), borderwidth=0, undo=True, autoseparators=True, maxundo=1)
         self.notes_text.pack(expand=True, fill='both', padx=(10, 0), pady=(5, 5))
         
         # Set border color of notepad widget
@@ -54,12 +54,8 @@ class NoteApp:
         self.notes_text.bind("<Key>", self.check_search_input)
         
         self.notes_text.bind("<Control-c>", lambda e: self.notes_text.event_generate("<<Copy>>"))
-        
-        self.notes_text.bind("<Control-z>", self.undo)
-
-
-
-
+       
+    
 # FUNCTIONS
 
     def load_notes(self, search_term=None):
@@ -79,6 +75,7 @@ class NoteApp:
         except FileNotFoundError:
             pass
     
+    
     def save_notes(self):
         with open("notes.txt", "w") as f:
             notes = self.notes_text.get("1.0", tk.END)
@@ -90,10 +87,12 @@ class NoteApp:
     #     #     return
     #     self.save_notes()
         
+        
     def auto_save_notes(self, event=None):
         search_term = self.search_var.get()
         if not search_term or search_term == "Search...":
             self.save_notes()
+        
         
     def search_notes(self, *args):
         search_term = self.search_var.get()
@@ -115,6 +114,7 @@ class NoteApp:
             # remove search term highlighting when search box is empty
             self.notes_text.tag_remove("highlight", "1.0", tk.END)
             
+            
     def clear_searchbox(self, event):
         if self.search_var.get() == "Search...":
             self.search_var.set("")
@@ -134,11 +134,6 @@ class NoteApp:
             self.notes_text.config(insertbackground="#E1E1E1")
             
             
-    def undo(self, event=None):
-        if self.search_var.get() != "Search...":
-            self.notes_text.edit_undo()
- 
-
 root = tk.Tk()
 app = NoteApp(root)
 root.mainloop()
