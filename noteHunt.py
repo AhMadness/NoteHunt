@@ -54,18 +54,37 @@ class NoteApp:
         self.search_var2 = tk.StringVar()
         self.search_var2.set("Highlight")
         self.search_var2.trace("w", self.search_notes)
-        self.search_entry2 = tk.Entry(toolbar_frame, textvariable=self.search_var2, width=14, font=('Montserrat', 12), fg='grey')
+        self.search_entry2 = tk.Entry(toolbar_frame, textvariable=self.search_var2, width=16, font=('Montserrat', 12), fg='grey')
         self.search_entry2.grid(row=0, column=1, padx=0, pady=10)
   
         # search function to focus in and out of search bar 2
         self.search_entry2.bind("<FocusIn>", self.clear_searchbox2)
         self.search_entry2.bind("<FocusOut>", self.on_search_entry_focus_out2)
-        self.search_entry2.bind("<Return>", self.activate_jump_button)
+        self.search_entry2.bind("<Return>", self.next_occurrence)
+        self.search_entry2.bind("<Down>", self.next_occurrence)
+        self.search_entry2.bind("<Up>", self.previous_occurrence)
+        
         # jump button
         self.occurrences = []
         # tk.Button(toolbar_frame, text="v", command=self.find_next_occurrence).grid(row=0, column=2, padx=0, pady=(6, 4))
-        self.jump_button = tk.Button(toolbar_frame, text="0 | 0", command=self.find_next_occurrence)
-        self.jump_button.grid(row=0, column=2, padx=0, pady=(6, 4))
+        self.jump_button = tk.Button(toolbar_frame, text="0 | 0", state="disabled", command=self.find_next_occurrence)
+        
+        
+        self.jump_button.place_forget()
+        # function to check if search_var2 is populated
+        def check_search_var2(*args):
+            if self.jump_button['text'] != "0 | 0":
+                self.jump_button.grid(row=0, column=2, padx=0, pady=(6, 4))  # change the coordinates to where you want to show the button
+            else:
+                self.jump_button.grid_forget()  # hide the button      
+        self.search_var2.trace("w", check_search_var2)
+        
+        def check_search_var2_width(*args):
+            if self.search_var2.get() == "Highlight":
+                self.search_entry2.config(width=16)
+            else:
+                self.search_entry2.config(width=13)
+        self.search_var2.trace("w", check_search_var2_width)
         
         # bind key event to check search input before allowing user to type in text area
         self.notes_text.bind("<Key>", self.check_search_input)
@@ -107,6 +126,7 @@ class NoteApp:
         search_term = self.search_var.get()
         if not search_term or search_term == "Search...":
             self.save_notes()
+            
         
     def search_notes(self, *args):
         search_term = self.search_var.get()
@@ -143,6 +163,7 @@ class NoteApp:
             if self.occurrences:
                 self.current_occurrence_index = 0
                 self.jump_button.configure(text=f"1 | {len(self.occurrences)}")
+                self.find_next_occurrence()
             else:
                 self.current_occurrence_index = None
                 self.jump_button.configure(text="0 | 0")
@@ -154,14 +175,11 @@ class NoteApp:
             self.jump_button.configure(text="0 | 0")
 
     def find_next_occurrence(self):
-        # get current cursor position
-        current_pos = self.notes_text.index(tk.INSERT)
-
         if not self.occurrences:
             return
 
         # find index of next occurrence after current cursor position
-        self.current_occurrence_index = (self.current_occurrence_index + 1) % len(self.occurrences)
+        self.current_occurrence_index = (self.current_occurrence_index) % len(self.occurrences)
 
         # move cursor to start of next occurrence
         start = self.occurrences[self.current_occurrence_index]
@@ -177,7 +195,25 @@ class NoteApp:
         
     def activate_jump_button(self, event):
         # call the find_next_occurrence method when the Return key is pressed
-        self.find_next_occurrence()
+        self.next_occurrence()
+        
+    def next_occurrence(self, event):
+        if self.occurrences:
+            self.current_occurrence_index = (self.current_occurrence_index + 1) % len(self.occurrences)
+            self.find_next_occurrence()
+
+    def previous_occurrence(self, event):
+        if self.occurrences:
+            self.current_occurrence_index = (self.current_occurrence_index - 1) % len(self.occurrences)
+            start = self.occurrences[self.current_occurrence_index]
+            self.notes_text.tag_remove("sel", "1.0", tk.END)
+            self.notes_text.tag_remove("highlight_current", "1.0", tk.END)
+            self.notes_text.tag_add("highlight_current", start, f"{start}+{len(self.search_var2.get())}c")
+            self.notes_text.tag_add("sel", start, f"{start}+{len(self.search_var2.get())}c")
+            self.notes_text.mark_set(tk.INSERT, start)
+            self.notes_text.see(tk.INSERT)
+            self.jump_button.configure(text=f"{self.current_occurrence_index + 1} | {len(self.occurrences)}")
+
 
     def clear_searchbox(self, event):
         if self.search_var.get() == "Search...":
