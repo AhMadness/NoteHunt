@@ -96,7 +96,7 @@ class NoteApp:
 
     def load_notes(self, search_term=None):
         try:
-            with open("notes.txt", "r") as f:
+            with open("notes.txt", "r", encoding='utf-8') as f:
                 notes = f.read()
                 if search_term:
                     filtered_notes = ""
