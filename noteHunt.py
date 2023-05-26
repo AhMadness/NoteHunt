@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext, filedialog
 
 class NoteApp:
     def __init__(self, master):
@@ -33,11 +33,18 @@ class NoteApp:
         # set highlight colors
         self.notes_text.configure(selectbackground="#19afaf", selectforeground="#E1E1E1")
         
+        # set the default file path to "notes.txt"
+        self.file_path = "notes.txt"
+        
         # load any previously saved notes
         self.load_notes()
         
         # bind modified event to auto-save notes
         self.notes_text.bind("<KeyRelease>", self.auto_save_notes)
+        
+        # open
+        open_button = tk.Button(toolbar_frame, text="Open", font=('Montserrat', 12), command=self.open_file)
+        open_button.grid(row=0, column=0, padx=(0, 300), pady=(0, 0))
         
         # create search bar
         self.search_var = tk.StringVar()
@@ -94,9 +101,19 @@ class NoteApp:
 
 # FUNCTIONS
 
+    def open_file(self):
+        file_path = tk.filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+        if file_path:
+            self.file_path = file_path  # update the file_path variable
+            with open(file_path, "r", encoding='utf-8') as f:
+                notes = f.read()
+                self.notes_text.delete("1.0", tk.END)
+                self.notes_text.insert(tk.END, notes)
+
+
     def load_notes(self, search_term=None):
         try:
-            with open("notes.txt", "r", encoding='utf-8') as f:
+            with open(self.file_path, "r", encoding='latin-1') as f:
                 notes = f.read()
                 if search_term:
                     filtered_notes = ""
@@ -110,10 +127,12 @@ class NoteApp:
                     self.notes_text.insert(tk.END, notes)
         except FileNotFoundError:
             pass
+
+
     
     def save_notes(self):
-        with open("notes.txt", "w") as f:
-            notes = self.notes_text.get("1.0", tk.END)
+        notes = self.notes_text.get("1.0", tk.END)
+        with open("notes.txt", "w", encoding='utf-8') as f:
             f.write(notes)
             
     
