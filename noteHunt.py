@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import scrolledtext, filedialog
+from tkinter import scrolledtext, filedialog, messagebox
 
 class NoteApp:
     def __init__(self, master):
@@ -24,8 +24,10 @@ class NoteApp:
         self.notes_text.config(fg="#E1E1E1")
     
         # define "highlight" tag for highlighting search term
-        self.notes_text.tag_configure("highlight", background="#19afaf")
-        self.notes_text.tag_configure("highlight_current", background="#0f6969")
+        self.notes_text.tag_configure("filter_highlight", background="#19afaf")
+        self.notes_text.tag_configure("highlight", background="#0f6969")
+        self.notes_text.tag_configure("highlight_current", background="#19afaf")
+        
         
         # cursor color
         self.notes_text.config(insertbackground="#E1E1E1")
@@ -34,7 +36,8 @@ class NoteApp:
         self.notes_text.configure(selectbackground="#19afaf", selectforeground="#E1E1E1")
         
         # set the default file path to "notes.txt"
-        self.file_path = "notes.txt"
+        # self.file_path = "notes.txt"
+        self.file_path = None
         
         # load any previously saved notes
         self.load_notes()
@@ -43,8 +46,13 @@ class NoteApp:
         self.notes_text.bind("<KeyRelease>", self.auto_save_notes)
         
         # open
-        open_button = tk.Button(toolbar_frame, text="Open", font=('Montserrat', 12), command=self.open_file)
-        open_button.grid(row=0, column=0, padx=(0, 300), pady=(0, 0))
+        open_button = tk.Button(toolbar_frame, text="Open", font=('Montserrat', 8), command=self.open_file)
+        open_button.grid(row=0, column=0, padx=(0, 333), pady=(0, 0))
+        
+        # save as
+        save_as_button = tk.Button(toolbar_frame, text="Save As", font=('Montserrat', 8), command=self.save_as_notes)
+        save_as_button.grid(row=0, column=0, padx=(0, 222), pady=(0, 0))
+        
         
         # create search bar
         self.search_var = tk.StringVar()
@@ -70,7 +78,7 @@ class NoteApp:
         self.search_entry2.bind("<Return>", self.next_occurrence)
         self.search_entry2.bind("<Down>", self.next_occurrence)
         self.search_entry2.bind("<Up>", self.previous_occurrence)
-        
+
         # jump button
         self.occurrences = []
         # tk.Button(toolbar_frame, text="v", command=self.find_next_occurrence).grid(row=0, column=2, padx=0, pady=(6, 4))
@@ -98,6 +106,9 @@ class NoteApp:
         
         # enable copying in filtered mode
         self.notes_text.bind("<Control-c>", lambda e: self.notes_text.event_generate("<<Copy>>"))
+        
+        
+        self.notes_text.bind("<Control-s>", self.save_as_notes)
 
 # FUNCTIONS
 
@@ -110,16 +121,20 @@ class NoteApp:
                 self.notes_text.delete("1.0", tk.END)
                 self.notes_text.insert(tk.END, notes)
 
-
+    # filter by blocks
     def load_notes(self, search_term=None):
+        if not self.file_path:
+            return
         try:
             with open(self.file_path, "r", encoding='latin-1') as f:
                 notes = f.read()
                 if search_term:
                     filtered_notes = ""
-                    for line in notes.splitlines():
-                        if search_term.lower() in line.lower():
-                            filtered_notes += line + "\n\n"
+                    # splitting by two newline characters to create blocks separated by empty lines
+                    for block in notes.split('\n\n'):
+                        if search_term.lower() in block.lower():
+                            # adding an entire block to the filtered notes
+                            filtered_notes += block + "\n\n"
                     self.notes_text.delete("1.0", tk.END)
                     self.notes_text.insert(tk.END, filtered_notes)
                 else:
@@ -127,14 +142,49 @@ class NoteApp:
                     self.notes_text.insert(tk.END, notes)
         except FileNotFoundError:
             pass
-
+        
+        
+    # Filter by lines
+    # def load_notes(self, search_term=None):
+        # if not self.file_path:
+        #     return
+    #     try:
+    #         with open(self.file_path, "r", encoding='latin-1') as f:
+    #             notes = f.read()
+    #             if search_term:
+    #                 filtered_notes = ""
+    #                 for line in notes.splitlines():
+    #                     if search_term.lower() in line.lower():
+    #                         filtered_notes += line + "\n\n"
+    #                 self.notes_text.delete("1.0", tk.END)
+    #                 self.notes_text.insert(tk.END, filtered_notes)
+    #             else:
+    #                 self.notes_text.delete("1.0", tk.END)
+    #                 self.notes_text.insert(tk.END, notes)
+    #     except FileNotFoundError:
+    #         pass
 
     
-    def save_notes(self):
-        notes = self.notes_text.get("1.0", tk.END)
-        with open("notes.txt", "w", encoding='utf-8') as f:
-            f.write(notes)
+    # def save_notes(self):
+    #     notes = self.notes_text.get("1.0", tk.END)
+    #     with open("notes.txt", "w", encoding='utf-8') as f:
+    #         f.write(notes)
             
+    def save_notes(self, event=None):
+        if self.file_path is None:
+            return  # Do not save if no file is open
+        content = self.notes_text.get('1.0', 'end-1c')
+        with open(self.file_path, 'w') as file:
+            file.write(content)
+        self.notes_text.edit_modified(False)
+        
+    def save_as_notes(self, event=None):
+        new_file_path = filedialog.asksaveasfilename(defaultextension="txt",
+                                                    filetypes=(("Text Files", "*.txt"), ("All Files", "*.*")))
+        if new_file_path:
+            self.file_path = new_file_path
+            self.save_notes()
+
     
     # def auto_save_notes(self, event=None):
     #     # if self.search_var.get() != "Search...":
@@ -153,7 +203,7 @@ class NoteApp:
         if search_term and search_term != "Search...":
             self.load_notes(search_term.lower())
             # remove previous search term highlighting
-            self.notes_text.tag_remove("highlight", "1.0", tk.END)
+            self.notes_text.tag_remove("filter_highlight", "1.0", tk.END)
             # highlight current search term
             start = "1.0"
             while True:
@@ -161,7 +211,7 @@ class NoteApp:
                 if not start:
                     break
                 end = f"{start}+{len(search_term)}c"
-                self.notes_text.tag_add("highlight", start, end)
+                self.notes_text.tag_add("filter_highlight", start, end)
                 start = end
         elif search_term2 and search_term2 != "Highlight":
             # remove previous search term highlighting
@@ -189,7 +239,7 @@ class NoteApp:
         else:
             self.load_notes()
             # remove search term highlighting when search box is empty
-            self.notes_text.tag_remove("highlight", "1.0", tk.END)
+            self.notes_text.tag_remove("filter_highlight", "1.0", tk.END)
             self.current_occurrence_index = None
             self.jump_button.configure(text="0 | 0")
 
@@ -237,6 +287,7 @@ class NoteApp:
     def clear_searchbox(self, event):
         if self.search_var.get() == "Search...":
             self.search_var.set("")
+        self.search_var2.set("Highlight")
             
     def on_search_entry_focus_out(self, event):
         if not self.search_var.get():
@@ -245,6 +296,7 @@ class NoteApp:
     def clear_searchbox2(self, event):
         if self.search_var2.get() == "Highlight":
             self.search_var2.set("")
+        self.search_var.set("Search...")
             
     def on_search_entry_focus_out2(self, event):
         if not self.search_var2.get():
@@ -257,7 +309,84 @@ class NoteApp:
             return "break"
         else:
             self.notes_text.config(insertbackground="#E1E1E1")
+            
+            
+    class CustomDialog(tk.Toplevel):
+        def __init__(self, parent):
+            self.parent = parent
+            tk.Toplevel.__init__(self, parent.master)
+            self.title("Confirm Exit")
+            self.configure(bg='white')
+            self.geometry("300x100")
+            
+             # Calculate the center of the parent window
+            window_width = parent.master.winfo_width()
+            window_height = parent.master.winfo_height()
+            window_x = parent.master.winfo_x()
+            window_y = parent.master.winfo_y()
+
+            # Calculate the center of the dialog
+            center_x = window_x + (window_width // 2)
+            center_y = window_y + (window_height // 2)
+
+            # Calculate the necessary offset to center the dialog
+            dialog_width = 300
+            dialog_height = 100
+            offset_x = center_x - (dialog_width // 2)
+            offset_y = center_y - (dialog_height // 2)
+
+            # Position the dialog at the calculated coordinates
+            self.geometry(f"+{offset_x}+{offset_y}")
+
+            tk.Label(self, text="You have unsaved changes.", width=50, bg="white").pack(pady=10)
+
+            # Create a frame for the buttons
+            button_frame = tk.Frame(self, bg='white')
+            button_frame.pack(pady=12)
+
+            tk.Button(button_frame, text="Save", command=self.save, fg='blue').pack(side="left", padx=10)
+            tk.Button(button_frame, text="Discard", command=self.discard, fg='red').pack(side="left")
+            tk.Button(button_frame, text="Cancel", command=self.cancel, fg='gray').pack(side="right", padx=10)
+            
+            # Restrict all events to this window until it is destroyed
+            self.grab_set()
+            
+
+        def save(self):
+            self.parent.save_as_notes()
+            self.result = "save"
+            self.destroy()
+
+        def discard(self):
+            self.result = "discard"
+            self.destroy()
+
+        def cancel(self):
+            self.result = "cancel"
+            self.destroy()
+    
+    
+    def on_closing(self):
+        # Check if there are unsaved changes and no file is open
+        if self.notes_text.edit_modified() and self.file_path is None:  
+            # Check if the text area is not empty
+            if not self.notes_text.get("1.0", "end-1c").strip():  
+                self.master.destroy()
+            else:
+                self.master.focus_set()
+                dialog = self.CustomDialog(self)
+                self.master.wait_window(dialog)  # Wait for the dialog to be destroyed
+
+                if dialog.result == "save":
+                    self.master.destroy()
+                elif dialog.result == "discard":
+                    self.master.destroy()
+        else:
+            # Either no unsaved changes or a file is open, so close the application
+            self.master.destroy()
+            
 
 root = tk.Tk()
 app = NoteApp(root)
+root.protocol("WM_DELETE_WINDOW", app.on_closing)
 root.mainloop()
